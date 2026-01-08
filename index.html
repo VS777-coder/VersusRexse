@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Versus Mobile - Offset Fixed (Strict)</title>
+    <style>
+        :root { 
+            --s: calc(100vh / 14); 
+            --blue: #0040ff; --red: #ff0044; --gray: #444; --white: #eee;
+            --rep: #0080ff; --bell: #eebb00; --suika: #00bb00; --cherry: #ff0000; --tok: #aa00ff;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        html, body { background: #000; color: #fff; font-family: sans-serif; margin: 0; height: 100svh; width: 100%; overflow: hidden; position: fixed; }
+        header { display: flex; gap: 4px; padding: 6px; background: #111; flex-shrink: 0; }
+        header label { flex: 1; height: 50px; }
+        header input { display: none; }
+        header span { display: flex; align-items: center; justify-content: center; height: 100%; border-radius: 6px; font-size: 14px; font-weight: bold; text-align: center; line-height: 1.2; opacity: 0.45; border: 2px solid transparent; transition: 0.1s; color: #fff; }
+        .state-hazure span { background: var(--gray); }
+        .state-x span { background: var(--blue); }
+        .state-seven span { background: var(--red); }
+        .state-reg span { background: #bbb; color: #000; }
+        header input:checked + span { opacity: 1; border-color: #fff; transform: scale(0.98); }
+        
+        main { flex: 1; display: flex; justify-content: center; align-items: center; padding: 5px; overflow: hidden; gap: 2px; }
+        .reel-col { flex: 1; max-width: 130px; display: flex; flex-direction: column; height: calc(var(--s) * 7); position: relative; pointer-events: auto; }
+        
+        .window { 
+            flex: 1; background: #000; border: 2px solid #333; 
+            position: relative; overflow-y: scroll; 
+            scroll-snap-type: y mandatory;
+            scroll-behavior: auto;
+        }
+        .window::-webkit-scrollbar { display: none; }
+        #win-R { overflow-y: hidden; pointer-events: none; }
+        
+        .symbol { width: 100%; height: var(--s); scroll-snap-align: start; scroll-snap-stop: always; flex-shrink: 0; background-image: url('reel.png'); background-size: 100% 2100%; border-bottom: 1px solid #111; position: relative; }
+        
+        .frame { position: absolute; left: -6px; width: calc(100% + 12px); height: calc(var(--s) * 3); top: calc(var(--s) * 2); z-index: 100; pointer-events: none; border: 8px solid transparent; }
+        #win-L-frame { border-color: rgba(0, 64, 255, 0.8); }
+        #win-R-frame { border-color: rgba(255, 0, 68, 0.8); }
+
+        .info { width: 85px; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; padding: 0 2px; }
+        .badge { background: #111; border: 1.5px solid #444; padding: 4px 0; border-radius: 6px; text-align: center; }
+        .badge span { font-size: 9px; color: #888; display: block; font-weight: bold; }
+        .badge b { font-size: 22px; color: #fff; line-height: 1.2; font-family: monospace; }
+        #val-slip { color: #ff0; font-size: 30px; }
+
+        nav { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; padding: 6px; background: #111; flex-shrink: 0; }
+        nav span { display: flex; align-items: center; justify-content: center; height: 42px; border-radius: 4px; font-size: 9px; text-align: center; line-height: 1.1; font-weight: bold; opacity: 0.45; border: 1px solid transparent; transition: 0.1s; color: #fff; }
+        .f-hazure span { background: #666; }
+        .f-rep span { background: var(--rep); color: #fff; }
+        .f-bell span { background: var(--bell); color: #000; }
+        .f-suika span { background: var(--suika); color: #fff; }
+        .f-cherry span { background: var(--cherry); color: #fff; }
+        .f-tok span { background: var(--tok); color: #fff; }
+        nav input:checked + span { opacity: 1; border: 2px solid #fff; }
+        nav input { display: none; }
+        
+        footer { height: 70px; padding: 8px; background: #111; flex-shrink: 0; border-top: 1px solid #333; }
+        .btn-exec { width: 100%; height: 100%; background: #d32f2f; color: #fff; font-weight: bold; font-size: 18px; border: none; border-radius: 8px; }
+        .is-disabled { opacity: 0.1 !important; pointer-events: none; }
+    </style>
+</head>
+<body onload="init()">
+<header>
+    <label class="state-hazure"><input type="radio" name="state" value="hazure" checked onchange="toggleSpecialFlags(true)"><span>未成立</span></label>
+    <label class="state-x"><input type="radio" name="state" value="x_flag" onchange="toggleSpecialFlags(false)"><span>X成立</span></label>
+    <label class="state-seven"><input type="radio" name="state" value="seven_flag" onchange="toggleSpecialFlags(false)"><span>７成立</span></label>
+    <label class="state-reg"><input type="radio" name="state" value="bar_flag" onchange="toggleSpecialFlags(false)"><span>Reg成立</span></label>
+</header>
+<main>
+    <div class="reel-col">
+        <div id="win-L-frame" class="frame"></div>
+        <div class="window" id="win-L"><div id="strip-L"></div></div>
+    </div>
+    <div class="info">
+        <div class="badge"><span>狙い(中)</span><b id="val-cur">--</b></div>
+        <div class="badge"><span>滑り</span><b id="val-slip">--</b></div>
+        <div class="badge"><span>停止(中)</span><b id="val-res">--</b></div>
+    </div>
+    <div class="reel-col">
+        <div id="win-R-frame" class="frame"></div>
+        <div class="window" id="win-R"><div id="strip-R"></div></div>
+    </div>
+</main>
+<nav>
+    <label class="f-hazure"><input type="radio" name="flag" value="hazure" checked><span>ハズレ</span></label>
+    <label class="f-rep"><input type="radio" name="flag" value="normal_rep"><span>リプ</span></label>
+    <label class="f-rep"><input type="radio" name="flag" value="jac_rep"><span>JACリプ</span></label>
+    <label class="f-rep"><input type="radio" name="flag" value="rt_rep"><span>RTリプ</span></label>
+    <label class="f-bell"><input type="radio" name="flag" value="bellA"><span>ベルA</span></label>
+    <label class="f-bell"><input type="radio" name="flag" value="bellB"><span>ベルB</span></label>
+    <label class="f-suika"><input type="radio" name="flag" value="suikaA"><span>スイカA</span></label>
+    <label class="f-suika"><input type="radio" name="flag" value="suikaB"><span>スイカB</span></label>
+    <label class="f-cherry"><input type="radio" name="flag" value="cherA"><span>チェA</span></label>
+    <label class="f-cherry"><input type="radio" name="flag" value="cherB"><span>チェB</span></label>
+    <label class="f-tok is-disabled"><input type="radio" name="flag" value="tokA"><span>特A</span></label>
+    <label class="f-tok is-disabled"><input type="radio" name="flag" value="tokB"><span>特B</span></label>
+    <label class="f-tok is-disabled"><input type="radio" name="flag" value="tokC"><span>特C</span></label>
+    <label class="f-tok is-disabled"><input type="radio" name="flag" value="tokD"><span>特D</span></label>
+    <label class="f-tok is-disabled"><input type="radio" name="flag" value="tokE"><span>特E</span></label>
+</nav>
+<footer><button class="btn-exec" onclick="executeControl()">解析実行</button></footer>
+
+<script>
+    const GOD_DATA = {
+        hazure: {
+            hazure: [2,2,4,4,0,1,1,1,0,1,0,1,2,3,0,1,0,1,2,0,0],
+            normal_rep: [0,1,2,3,4,0,1,0,1,2,0,1,2,3,4,0,1,0,1,2,3],
+            jac_rep: [1,2,0,1,2,3,0,0,2,2,4,2,3,4,2,3,0,1,1,3,3],
+            rt_rep: [0,1,2,3,4,0,0,1,1,2,0,1,2,3,4,0,0,1,1,2,3],
+            bellA: [1,1,3,3,4,0,2,1,1,1,1,1,3,3,4,1,2,3,1,2,0],
+            bellB: [1,1,3,3,4,0,2,1,1,1,1,1,3,3,4,1,2,3,1,2,0],
+            suikaA: [2,1,4,3,0,0,1,1,4,0,2,2,4,4,0,1,1,2,2,3,1],
+            suikaB: [2,1,4,3,0,0,1,1,4,0,2,2,4,4,0,1,1,2,2,3,1],
+            cherA: [4,0,1,0,1,2,3,4,0,1,2,0,1,0,1,2,3,4,1,2,3],
+            cherB: [4,0,1,0,1,2,3,4,0,1,2,0,1,0,1,2,3,4,1,2,3],
+            tokA: Array(21).fill(null), tokB: Array(21).fill(null), tokC: Array(21).fill(null), tokD: Array(21).fill(null), tokE: Array(21).fill(null)
+        },
+        x_flag: {
+            hazure: [2,2,4,4,0,1,2,3,4,1,0,2,2,3,0,1,0,0,0,0,0],
+            normal_rep: [0,1,2,3,4,0,1,2,3,4,0,4,2,3,4,0,1,0,3,2,3],
+            jac_rep: [0,2,2,4,0,0,1,1,0,0,2,1,4,3,0,1,1,2,4,0,1],
+            rt_rep: [0,1,2,3,4,0,1,0,1,2,0,1,2,3,4,0,1,0,1,2,3],
+            bellA: [1,1,3,3,4,0,2,1,1,1,1,1,3,3,4,1,2,3,1,2,0],
+            bellB: [1,1,2,4,0,1,1,2,4,0,2,4,2,4,0,1,2,3,4,2,1],
+            suikaA: [2,3,4,4,0,1,2,3,4,0,2,2,4,4,0,1,0,1,2,3,1],
+            suikaB: [2,3,4,4,0,1,2,3,4,0,2,2,4,4,0,1,0,1,2,3,1],
+            cherA: [4,0,1,0,1,2,3,4,4,1,2,0,1,0,1,2,3,4,1,2,3],
+            cherB: [4,0,1,0,1,2,3,4,4,1,2,0,1,0,1,2,3,4,1,2,3],
+            tokA: [2,2,4,4,0,1,2,3,4,1,2,2,4,4,0,1,0,0,0,0,0],
+            tokB: [2,2,4,4,0,1,2,3,4,1,0,2,2,3,0,1,0,0,0,0,0],
+            tokC: [2,2,4,4,0,1,2,3,4,1,2,2,4,4,0,1,0,0,0,0,0],
+            tokD: [1,4,3,4,0,1,2,3,4,2,2,2,2,4,0,0,0,1,1,3,3],
+            tokE: [2,2,4,4,0,1,2,3,4,1,0,2,2,3,0,1,0,0,0,0,0]
+        },
+        seven_flag: {
+            hazure: [1,1,3,3,0,1,0,0,0,1,1,1,3,3,4,1,2,3,4,1,1],
+            normal_rep: [0,1,2,3,4,0,1,0,1,2,0,1,2,3,4,0,1,0,1,2,3],
+            jac_rep: [1,1,4,1,4,1,4,2,1,0,1,2,0,4,4,0,4,1,1,3,0],
+            rt_rep: [0,1,2,3,4,0,1,0,1,2,0,1,2,3,4,0,0,0,1,2,3],
+            bellA: [1,1,3,3,4,0,2,1,1,1,1,1,3,3,4,1,2,3,1,2,0],
+            bellB: [2,2,4,4,0,1,1,1,0,1,0,1,2,3,0,1,0,1,2,0,0],
+            suikaA: [2,1,4,3,0,0,1,1,1,1,2,2,4,4,0,1,1,2,2,3,1],
+            suikaB: [2,1,4,3,0,0,1,1,1,1,2,2,4,4,0,1,1,2,2,3,1],
+            cherA: [4,0,1,0,1,2,3,4,1,1,2,0,1,0,1,2,3,4,1,2,3],
+            cherB: [4,0,1,0,1,2,3,4,1,1,2,0,1,0,1,2,3,4,1,2,3],
+            tokA: [2,1,4,3,0,0,1,1,0,1,2,2,4,4,0,1,1,2,2,3,1],
+            tokB: [1,3,3,4,0,1,0,1,0,1,1,1,3,3,4,1,0,1,2,1,1],
+            tokC: [0,1,3,3,0,1,2,1,0,0,1,2,3,4,0,1,2,1,2,3,0],
+            tokD: [2,3,3,4,4,1,2,1,0,0,1,2,3,4,4,1,0,1,2,3,0],
+            tokE: [2,3,3,4,4,1,2,1,0,0,1,2,3,4,4,1,0,1,2,3,0]
+        },
+        bar_flag: {
+            hazure: [1,1,3,3,0,1,0,0,0,1,1,1,3,3,0,1,2,3,4,1,1],
+            normal_rep: [0,1,2,3,4,0,1,0,1,2,0,1,2,3,4,0,1,0,1,2,3],
+            jac_rep: [0,1,2,3,4,0,1,0,1,2,0,1,2,3,4,0,1,0,1,2,3],
+            rt_rep: [0,1,2,3,4,0,1,0,1,2,0,1,2,3,4,0,1,0,1,2,3],
+            bellA: [1,1,3,3,4,0,2,1,1,1,1,1,3,3,4,1,2,3,1,2,0],
+            bellB: [1,1,2,4,0,1,1,2,4,0,0,4,2,3,0,1,2,3,4,2,1],
+            suikaA: [2,1,4,3,0,0,1,1,0,0,2,2,4,4,0,1,2,3,4,3,1],
+            suikaB: [2,1,4,3,0,0,1,1,0,0,2,2,4,4,0,1,2,3,4,3,1],
+            cherA: [4,0,1,0,1,2,3,4,0,1,2,0,1,0,1,2,3,4,4,2,3],
+            cherB: [4,0,1,0,1,2,3,4,0,1,2,0,1,0,1,2,3,4,4,2,3],
+            tokA: [0,1,3,3,0,1,2,1,0,0,1,2,3,4,0,1,2,3,4,3,1],
+            tokB: [2,3,3,4,0,1,2,1,0,0,1,2,3,4,0,1,0,1,2,3,1],
+            tokC: [0,1,3,3,0,1,2,1,0,0,1,2,3,4,0,1,2,3,4,3,0],
+            tokD: [2,2,4,4,0,1,2,3,0,1,0,2,3,3,0,1,0,0,0,3,0],
+            tokE: [2,3,3,4,0,1,2,1,0,0,1,2,3,4,0,1,0,1,2,3,0]
+        }
+    };
+
+    let sH = 0;
+    let selectedIdx = 21;
+
+    function init() {
+        build('strip-L');
+        build('strip-R');
+        const winL = document.getElementById('win-L');
+        
+        setTimeout(() => {
+            sH = document.querySelector('.symbol').offsetHeight;
+            winL.scrollTop = 21 * sH;
+            updateCurrentPos();
+        }, 100);
+
+        winL.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const direction = e.deltaY > 0 ? 1 : -1;
+            winL.scrollTop += direction * sH;
+        }, { passive: false });
+
+        winL.onscroll = () => {
+            if (winL.scrollTop < 5 * sH) winL.scrollTop += 21 * sH;
+            if (winL.scrollTop > 40 * sH) winL.scrollTop -= 21 * sH;
+            updateCurrentPos();
+        };
+    }
+
+    function updateCurrentPos() {
+        const winL = document.getElementById('win-L');
+        let centerPos = winL.scrollTop + (sH * 2.5);
+        let rawIdx = Math.floor(centerPos / sH);
+        selectedIdx = 21 - (rawIdx % 21);
+        if (selectedIdx === 0) selectedIdx = 21;
+        document.getElementById('val-cur').innerText = selectedIdx;
+    }
+
+    function build(id) {
+        const target = document.getElementById(id);
+        for(let s=0; s<3; s++) for(let i=21; i>=1; i--) {
+            const d = document.createElement('div'); d.className = 'symbol'; 
+            d.style.backgroundPosition = `0 ${(21-i)*5}%`; target.appendChild(d);
+        }
+    }
+    function toggleSpecialFlags(isH) {
+        document.querySelectorAll('.f-tok').forEach(l => l.classList.toggle('is-disabled', isH));
+        if(isH) document.querySelector('input[value="hazure"]').checked = true;
+    }
+
+    function executeControl() {
+        const state = document.querySelector('input[name="state"]:checked').value;
+        const flag = document.querySelector('input[name="flag"]:checked').value;
+        
+        let lowTarget = selectedIdx - 2;
+        if (lowTarget <= 0) lowTarget += 21;
+        
+        const arrayIdx = 21 - lowTarget; 
+        const slip = GOD_DATA[state][flag][arrayIdx];
+        
+        let stopLow = lowTarget + slip; if(stopLow > 21) stopLow -= 21;
+        let stopMid = stopLow + 1; if(stopMid > 21) stopMid -= 21;
+        
+        document.getElementById('val-slip').innerText = slip;
+        document.getElementById('val-res').innerText = stopMid;
+
+        const winR = document.getElementById('win-R');
+        // 【修正箇所】 -1 から -3 に変更。これで計算通りの駒番号が中段に配置されます。
+        const targetTop = (21 + (21 - stopMid) - 3) * sH;
+        winR.scrollTo({ top: targetTop, behavior: 'auto' });
+    }
+</script>
+</body>
+</html>
