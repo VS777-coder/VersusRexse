@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Versus Revise - Precision Auditor Final</title>
+    <title>Versus Revise - Precision Auditor</title>
     <style>
         :root {
             --sH: 60px; --blue: #00bbff; --red: #ff3333;
@@ -12,7 +12,6 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; user-select: none; }
         body { background: #000; color: #fff; font-family: sans-serif; height: 100svh; overflow: hidden; display: flex; flex-direction: column; position: fixed; width: 100%; }
         
-        /* 非選択ボタンの暗転 */
         .reel-header { display: flex; gap: 4px; padding: 6px 8px 3px; background: #111; flex-shrink: 0; }
         .reel-btn { flex: 1; height: 44px; border-radius: 6px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid #444; background: #222; color: #fff; cursor: pointer; opacity: 0.4; transition: opacity 0.2s; }
         .reel-btn.active { opacity: 1; }
@@ -42,9 +41,8 @@
         .info-val { font-size: 15px; font-weight: bold; }
         #val-slip { font-size: 30px; color: #ffff00; line-height: 1; }
 
-        /* 5列×3行の役ボタン */
         .flag-grid { padding: 4px 8px 8px; background: #111; display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; flex-shrink: 0; }
-        .flag-btn { height: 38px; border-radius: 5px; font-size: 8px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 1px solid #222; color: #fff; text-shadow: 1px 1px 1px #000; cursor: pointer; text-align: center; line-height: 1.1; }
+        .flag-btn { height: 38px; border-radius: 5px; font-size: 8.5px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 1px solid #222; color: #fff; text-shadow: 1px 1px 1px #000; cursor: pointer; text-align: center; line-height: 1.1; }
         .flag-btn.active { border: 2px solid #fff; box-shadow: 0 0 8px #fff; z-index: 10; }
         .flag-btn.disabled { opacity: 0.15; pointer-events: none; filter: grayscale(1); }
 
@@ -105,7 +103,6 @@
     let selectedFlagIdx = 0;
     const reelArray = [21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1];
 
-    // バーサスリヴァイズ全DNAデータ
     const GOD_DATA = {
         left: {
             hazure: { 21:[2,0,1,0,1,1,2,2,4,4,null,null,null,null,null], 20:[2,1,2,1,1,1,1,1,0,0,null,null,null,null,null], 19:[4,2,0,2,3,3,4,4,1,1,null,null,null,null,null], 18:[4,3,1,3,3,3,3,3,0,0,null,null,null,null,null], 17:[0,4,2,4,4,4,0,0,1,1,null,null,null,null,null], 16:[1,0,3,0,0,0,0,0,2,2,null,null,null,null,null], 15:[1,1,0,0,2,2,1,1,3,3,null,null,null,null,null], 14:[1,0,0,1,1,1,1,1,4,4,null,null,null,null,null], 13:[0,1,2,1,1,1,4,4,0,0,null,null,null,null,null], 12:[1,2,2,2,1,1,0,0,1,1,null,null,null,null,null], 11:[0,0,4,0,1,1,2,2,2,2,null,null,null,null,null], 10:[1,1,2,1,1,1,2,2,0,0,null,null,null,null,null], 9:[2,2,3,2,3,3,4,4,1,1,null,null,null,null,null], 8:[3,3,4,3,3,3,4,4,0,0,null,null,null,null,null], 7:[0,4,2,4,4,4,0,0,1,1,null,null,null,null,null], 6:[1,0,3,0,1,1,1,1,2,2,null,null,null,null,null], 5:[0,1,0,0,2,2,1,1,3,3,null,null,null,null,null], 4:[1,0,1,1,3,3,2,2,4,4,null,null,null,null,null], 3:[2,1,1,1,1,1,2,2,1,1,null,null,null,null,null], 2:[0,2,3,2,2,2,3,3,2,2,null,null,null,null,null], 1:[0,3,3,3,0,0,1,1,3,3,null,null,null,null,null] },
@@ -123,7 +120,7 @@
             hazure: { 21:[0,3,0,3,2,2,0,0,2,2,null,null,null,null,null], 20:[0,0,1,0,3,3,3,3,3,3,null,null,null,null,null], 19:[2,1,2,1,0,0,0,0,0,0,null,null,null,null,null], 18:[2,2,3,2,1,1,3,3,1,1,null,null,null,null,null], 17:[0,3,0,3,2,2,2,2,2,2,null,null,null,null,null], 16:[1,0,1,0,3,3,1,1,3,3,null,null,null,null,null], 15:[2,1,2,1,4,4,4,4,2,2,null,null,null,null,null], 14:[3,2,3,2,0,0,0,0,3,3,null,null,null,null,null], 13:[4,3,4,3,1,1,4,4,4,4,null,null,null,null,null], 12:[0,4,0,4,2,2,0,0,0,0,null,null,null,null,null], 11:[1,0,1,0,3,3,3,3,1,1,null,null,null,null,null], 10:[1,1,2,1,0,0,4,4,2,2,null,null,null,null,null], 9:[3,2,0,2,1,1,0,0,3,3,null,null,null,null,null], 8:[3,0,1,0,2,2,4,4,0,0,null,null,null,null,null], 7:[0,1,2,1,3,3,0,0,1,1,null,null,null,null,null], 6:[1,2,3,2,0,0,0,0,0,0,null,null,null,null,null], 5:[2,3,4,3,1,1,2,2,1,1,null,null,null,null,null], 4:[0,4,0,4,2,2,2,2,2,2,null,null,null,null,null], 3:[1,0,1,0,3,3,4,4,3,3,null,null,null,null,null], 2:[2,1,2,1,0,0,2,2,2,2,null,null,null,null,null], 1:[3,2,3,2,1,1,1,1,3,3,null,null,null,null,null] },
             don: { 21:[2,3,0,3,2,2,2,2,2,2,2,2,2,2,2], 20:[3,0,1,0,3,3,3,3,3,3,3,3,3,3,3], 19:[4,1,2,1,0,0,4,4,0,0,4,4,4,4,4], 18:[3,2,3,2,1,1,3,3,1,1,3,3,3,0,3], 17:[2,3,0,3,2,2,2,2,2,2,2,2,2,1,2], 16:[1,0,1,0,3,3,1,1,3,3,0,0,0,2,0], 15:[4,1,2,1,4,4,4,4,2,2,1,1,1,3,1], 14:[3,2,3,2,0,0,3,3,3,3,0,0,0,4,0], 13:[1,3,4,3,1,1,1,1,4,4,3,3,3,0,3], 12:[0,4,0,4,2,2,0,0,0,0,2,2,2,0,2], 11:[3,0,1,0,3,3,3,3,1,1,3,3,3,1,3], 10:[0,1,2,1,0,0,2,2,2,2,4,0,0,0,4], 9:[0,2,0,2,1,1,0,0,3,3,2,2,2,1,2], 8:[2,0,1,0,2,2,4,4,0,0,2,2,2,2,2], 7:[2,1,2,1,3,3,2,2,1,1,0,4,4,3,0], 6:[0,2,3,2,0,0,0,0,0,0,0,4,4,4,0], 5:[1,3,4,3,1,1,1,1,1,1,2,2,2,0,2], 4:[0,4,0,4,2,2,0,0,2,2,0,0,0,0,0], 3:[1,0,1,0,3,3,1,1,3,3,1,1,1,1,1], 2:[0,1,2,1,0,0,0,0,2,2,2,2,2,2,2], 1:[3,2,3,2,1,1,3,3,3,3,1,1,1,1,1] },
             seven: { 21:[0,3,0,3,2,2,0,0,2,2,2,1,2,2,2], 20:[1,0,1,0,3,3,3,3,3,3,3,2,3,3,3], 19:[0,1,2,1,0,0,0,0,0,0,0,2,0,0,0], 18:[3,2,3,2,1,1,3,3,1,1,3,3,3,3,3], 17:[2,3,0,3,2,2,2,2,2,2,2,0,2,2,2], 16:[0,0,1,0,3,3,1,1,3,3,0,0,0,0,0], 15:[0,1,2,1,4,4,4,4,1,1,1,1,1,1,1], 14:[0,2,3,2,0,0,0,0,0,0,0,0,0,0,0], 13:[3,3,4,3,1,1,1,1,1,1,3,1,1,3,3], 12:[2,4,0,4,2,2,2,2,2,2,2,2,2,2,2], 11:[3,0,1,0,3,3,3,3,3,3,3,3,3,1,3], 10:[4,1,2,1,0,0,4,4,4,4,4,4,4,0,4], 9:[0,2,0,2,1,1,0,0,3,3,2,3,2,2,2], 8:[1,0,1,0,2,2,4,4,0,0,2,2,2,2,2], 7:[0,1,2,1,3,3,0,0,1,1,0,3,4,4,0], 6:[3,2,3,2,0,0,0,0,0,0,0,4,4,4,0], 5:[2,3,4,3,1,1,2,2,1,1,2,3,2,1,2], 4:[3,4,0,4,2,2,2,2,2,2,3,1,3,3,3], 3:[4,0,1,0,3,3,4,4,3,3,2,1,2,3,3], 2:[2,1,2,1,0,0,2,2,2,2,0,3,2,2,2], 1:[1,2,3,2,1,1,1,1,3,3,1,0,1,1,1] },
-            reg: { 21:[2,3,3,3,2,2,2,2,2,2,0,0,0,0,0], 20:[3,0,0,0,3,3,3,3,3,3,1,1,1,1,1], 19:[0,1,1,1,0,0,0,0,0,0,2,2,2,2,2], 18:[1,2,2,2,1,1,1,1,1,1,3,3,3,3,3], 17:[0,3,3,3,2,2,0,0,2,2,0,0,0,0,0], 16:[1,0,0,0,3,3,1,1,3,3,1,1,1,1,1], 15:[2,1,1,1,4,4,2,2,2,2,1,1,1,1,1], 14:[0,2,2,2,0,0,0,0,3,3,0,0,0,0,0], 13:[1,3,3,3,1,1,1,1,4,4,1,1,1,1,1], 12:[2,4,4,4,2,2,2,2,0,0,2,2,2,0,2], 11:[3,0,0,0,3,3,3,3,1,1,3,3,3,1,3], 10:[4,1,1,1,0,0,4,4,2,2,4,4,4,2,4], 9:[0,2,2,2,1,1,0,0,3,3,0,3,3,3,0], 8:[1,0,0,0,2,2,1,1,0,0,1,3,3,3,1], 7:[0,1,1,1,3,3,0,0,1,1,0,4,4,4,0], 6:[3,2,2,2,0,0,3,3,0,0,1,4,4,4,1], 5:[2,3,3,3,1,1,2,2,1,1,2,2,2,2,2], 4:[3,4,4,4,2,2,3,3,2,2,3,3,3,3,3], 3:[4,0,0,0,3,3,4,4,3,3,4,4,4,4,4], 2:[0,1,1,1,0,0,0,0,2,2,2,2,2,2,2], 1:[1,2,2,2,1,1,1,1,3,3,1,1,1,1,1] }
+            reg: { 21:[2,3,3,3,2,2,2,2,2,2,0,0,0,0,0], 20:[3,0,0,0,3,3,3,3,3,3,1,1,1,1,1], 19:[0,1,1,1,0,0,0,0,0,0,2,2,2,2,2], 18:[1,2,2,2,1,1,1,1,1,1,3,3,3,3,3], 17:[0,3,3,3,2,2,0,0,2,2,0,0,0,0,0], 16:[1,0,0,0,3,3,1,1,3,3,1,1,1,1,1], 15:[2,1,1,1,4,4,2,2,2,2,1,1,1,1,1], 14:[0,2,2,2,0,0,0,0,3,3,0,0,0,0,0], 13:[1,3,3,3,1,1,1,1,4,4,1,1,1,1,1], 12:[2,4,4,4,2,2,2,2,0,0,2,2,2,0,2], 11:[3,0,0,0,3,3,3,3,1,1,3,3,3,1,3], 10:[4,1,1,1,0,0,4,4,2,2,4,4,4,2,4], 9:[0,2,2,2,1,1,0,0,3,3,0,3,3,3,0], 8:[1,0,0,0,2,2,1,1,0,0,1,3,3,3,1], 7:[0,1,1,1,3,3,0,0,1,1,0,4,4,4,0], 6:[3,2,2,2,0,0,3,3,0,0,1,4,4,4,1], 5:[2,3,3,3,1,1,2,2,1,1,2,2,2,2,2], 4:[3,4,4,4,2,2,3,3,2,2,3,3,3,3,3], 3:[4,0,0,0,3,3,4,4,3,3,4,4,4,4,4], 2:[0,1,1,1,0,0,0,0,2,2,2,2,2,2,2], 1:[1,2,2,2,1,1,1,1,3,3,1,1,1,1,1] } 
         }
     };
 
@@ -169,15 +166,15 @@
     };
 
     function executeControl() {
-        // ★参照修正: 中段(selectedIdx)から1引いた「下段番号」を基準に制御を参照
+        // ★正引き: 押下位置(中段)から下段番号を計算して参照
         let bottomIdx = selectedIdx - 1;
         if (bottomIdx < 1) bottomIdx = 21;
         
         const slip = (GOD_DATA[currentReel][currentState] && GOD_DATA[currentReel][currentState][bottomIdx]) ? GOD_DATA[currentReel][currentState][bottomIdx][selectedFlagIdx] : 0;
         
-        // ★計算修正: 番号が下に向かって減る配列に対応した停止位置算出
-        let stopMid = selectedIdx - (slip || 0);
-        while(stopMid < 1) stopMid += 21;
+        // ★正引き: 押下位置(中段)に滑りコマ数を足す
+        let stopMid = selectedIdx + (slip || 0);
+        while(stopMid > 21) stopMid -= 21;
         
         document.getElementById('val-slip').innerText = (slip === null ? "--" : slip);
         document.getElementById('val-res').innerText = stopMid;
@@ -189,7 +186,7 @@
         document.getElementById('rb-' + id).classList.add('active');
         currentReel = id;
         buildL();
-        // 初期位置: 左8, 中15, 右3
+        // 初期配置: 左8, 中15, 右3
         const initialMap = { left: 8, middle: 15, right: 3 };
         const initNum = initialMap[id];
         const initScroll = sH * (21 + (21 - initNum + 21) - 2);
