@@ -22,10 +22,10 @@
         .reel-container { position: relative; width: 105px; height: 300px; background: #111; border: 2px solid #333; border-radius: 4px; overflow: hidden; }
         .win { width: 100%; height: 100%; overflow-y: scroll; scrollbar-width: none; scroll-snap-type: y mandatory; }
         .win::-webkit-scrollbar { display: none; }
-        .frame { position: absolute; top: 60px; left: 0; width: 100%; height: 180px; z-index: 99; pointer-events: none; border: 5px solid var(--blue); }
-        .frame.red { border-color: var(--red); }
+        .frame { position: absolute; top: 120px; left: 0; width: 100%; height: 60px; z-index: 99; pointer-events: none; border: 3px solid var(--blue); box-shadow: 0 0 10px var(--blue); }
+        .frame.red { border-color: var(--red); box-shadow: 0 0 10px var(--red); }
         .strip { display: flex; flex-direction: column; }
-        .symbol { width: 100%; height: 60px; background-size: 100% 2100%; background-repeat: no-repeat; scroll-snap-align: start; }
+        .symbol { width: 100%; height: 60px; background-size: 100% 2100%; background-repeat: no-repeat; scroll-snap-align: start; flex-shrink: 0; }
         .info { width: 90px; height: 300px; display: flex; flex-direction: column; border: 1px solid #333; border-radius: 4px; }
         .box { flex: 1; background: #111; border-bottom: 1px solid #333; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2px; }
         .box:last-child { border-bottom: none; }
@@ -38,14 +38,16 @@
         .f-btn.disabled { opacity: 0.1; pointer-events: none; }
         footer { padding: 8px 12px 12px; background: #000; }
         .exec { width: 100%; height: 55px; background: linear-gradient(#f44, #800); border-radius: 10px; color: #fff; font-size: 20px; font-weight: bold; border: 2px solid #f99; cursor: pointer; }
+        /* 補正：中段の位置をわかりやすく */
+        .frame { top: 120px; height: 60px; } 
     </style>
 </head>
 <body>
 <header>
     <div class="group">
-        <div id="rb-left" class="btn" onclick="changeReel('left')">左リール</div>
-        <div id="rb-middle" class="btn" onclick="changeReel('middle')">中リール</div>
-        <div id="rb-right" class="btn" onclick="changeReel('right')">右リール</div>
+        <div id="rb-left" class="btn" onclick="setReel('left')">左リール</div>
+        <div id="rb-middle" class="btn" onclick="setReel('middle')">中リール</div>
+        <div id="rb-right" class="btn" onclick="setReel('right')">右リール</div>
     </div>
     <div class="group">
         <div id="st-hazure" class="btn" onclick="setState('hazure')">ボーナス未成立</div>
@@ -55,16 +57,22 @@
     </div>
 </header>
 <main>
-    <div class="reel-container"><div class="frame"></div><div class="win" id="winL"><div id="stripL" class="strip"></div></div></div>
+    <div class="reel-container">
+        <div class="frame"></div>
+        <div class="win" id="winL"><div id="stripL" class="strip"></div></div>
+    </div>
     <div class="info">
         <div class="box"><div class="label">ストップボタン<br>押下</div><div id="val-mid" class="val">--</div></div>
         <div class="box"><div class="label">滑り</div><div id="val-slip" class="val">--</div></div>
         <div class="box"><div class="label">最終停止</div><div id="val-res" class="val">--</div></div>
     </div>
-    <div class="reel-container"><div class="frame red"></div><div class="win" style="overflow:hidden;"><div id="stripR" class="strip"></div></div></div>
+    <div class="reel-container">
+        <div class="frame red"></div>
+        <div class="win" id="winR" style="overflow:hidden;"><div id="stripR" class="strip"></div></div>
+    </div>
 </main>
 <div class="flag-grid" id="flag-container">
-    <div class="f-btn active" onclick="setFlag(0, this)" style="background:#444">ハズレ</div>
+    <div id="flg-0" class="f-btn active" onclick="setFlag(0, this)" style="background:#444">ハズレ</div>
     <div class="f-btn" onclick="setFlag(1, this)" style="background:var(--rep)">リプレイ</div>
     <div class="f-btn" onclick="setFlag(2, this)" style="background:var(--rep)">JACリプ</div>
     <div class="f-btn" onclick="setFlag(3, this)" style="background:var(--rep)">RTリプ</div>
@@ -81,17 +89,21 @@
     <div class="f-btn is-tok" onclick="setFlag(14, this)" style="background:var(--tok)">特殊役E</div>
 </div>
 <footer><button class="exec" id="execBtn" onclick="executeControl()">解 析 実 行</button></footer>
+
 <script>
-    const sH = 60;
+    const sH = 60; // 1コマの高さ
+    // リール配列（21番〜1番の降順）
     const reelArray = [21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1];
-    let reelPositions = { left: 8, middle: 15, right: 15 };
-    let selectedIdx = 8;
+    
+    // 状態管理変数
+    let selectedIdx = 8; // 現在中段にあるリール番号
     let currentState = 'hazure';
     let currentReel = 'left';
-    let selectedFlagIdx = 0;
-    let isExecuting = false;
+    let selectedFlagIdx = 0; // 0:ハズレ, 1:リプ...
 
-    // 【12種類の完全定義データ：捏造なし】
+    // ★★★ あなたがくれた「正解データ」をそのまま適用 ★★★
+    // 構造：[ リール番号, [滑りコマ数配列(15個)] ]
+    // ※ 並び順は「21番」が先頭、「1番」が末尾。
     const GOD_DATA = {
         left: {
             hazure: [[21,[2,1,2,1,1,1,1,1,0,0,null,null,null,null,null]],[20,[4,2,0,2,3,3,4,4,1,1,null,null,null,null,null]],[19,[4,3,1,3,3,3,3,3,0,0,null,null,null,null,null]],[18,[0,4,2,4,4,4,0,0,1,1,null,null,null,null,null]],[17,[1,0,3,0,0,0,0,0,2,2,null,null,null,null,null]],[16,[1,1,0,0,2,2,1,1,3,3,null,null,null,null,null]],[15,[1,0,0,1,1,1,1,1,4,4,null,null,null,null,null]],[14,[0,1,2,1,1,1,4,4,0,0,null,null,null,null,null]],[13,[1,2,2,2,1,1,0,0,1,1,null,null,null,null,null]],[12,[0,0,4,0,1,1,2,2,2,2,null,null,null,null,null]],[11,[1,1,2,1,1,1,2,2,0,0,null,null,null,null,null]],[10,[2,2,3,2,3,3,4,4,1,1,null,null,null,null,null]],[9,[3,3,4,3,3,3,4,4,0,0,null,null,null,null,null]],[8,[0,4,2,4,4,4,0,0,1,1,null,null,null,null,null]],[7,[1,0,3,0,1,1,1,1,2,2,null,null,null,null,null]],[6,[0,1,0,0,2,2,1,1,3,3,null,null,null,null,null]],[5,[1,0,1,1,3,3,2,2,4,4,null,null,null,null,null]],[4,[2,1,1,1,1,1,2,2,1,1,null,null,null,null,null]],[3,[0,2,3,2,2,2,3,3,2,2,null,null,null,null,null]],[2,[0,3,3,3,0,0,1,1,3,3,null,null,null,null,null]],[1,[2,0,1,0,1,1,2,2,4,4,null,null,null,null,null]]],
@@ -109,90 +121,155 @@
             hazure: [[21,[3,2,3,2,1,1,1,1,3,3,null,null,null,null,null]],[20,[2,1,2,1,0,0,2,2,2,2,null,null,null,null,null]],[19,[1,0,1,0,3,3,4,4,3,3,null,null,null,null,null]],[18,[0,4,0,4,2,2,2,2,2,2,null,null,null,null,null]],[17,[2,3,4,3,1,1,2,2,1,1,null,null,null,null,null]],[16,[1,2,3,2,0,0,0,0,0,0,null,null,null,null,null]],[15,[0,1,2,1,3,3,0,0,1,1,null,null,null,null,null]],[14,[3,0,1,0,2,2,4,4,0,0,null,null,null,null,null]],[13,[3,2,0,2,1,1,0,0,3,3,null,null,null,null,null]],[12,[1,1,2,1,0,0,4,4,2,2,null,null,null,null,null]],[11,[1,0,1,0,3,3,3,3,1,1,null,null,null,null,null]],[10,[0,4,0,4,2,2,0,0,0,0,null,null,null,null,null]],[9,[4,3,4,3,1,1,4,4,4,4,null,null,null,null,null]],[8,[3,2,3,2,0,0,0,0,3,3,null,null,null,null,null]],[7,[2,1,2,1,4,4,4,4,2,2,null,null,null,null,null]],[6,[1,0,1,0,3,3,1,1,3,3,null,null,null,null,null]],[5,[0,3,0,3,2,2,2,2,2,2,null,null,null,null,null]],[4,[2,2,3,2,1,1,3,3,1,1,null,null,null,null,null]],[3,[2,1,2,1,0,0,0,0,0,0,null,null,null,null,null]],[2,[0,0,1,0,3,3,3,3,3,3,null,null,null,null,null]],[1,[0,3,0,3,2,2,0,0,2,2,null,null,null,null,null]]],
             Vsus: [[21,[3,2,3,2,1,1,3,3,3,3,1,1,1,1,1]],[20,[0,1,2,1,0,0,0,0,2,2,2,2,2,2,2]],[19,[1,0,1,0,3,3,1,1,3,3,1,1,1,1,1]],[18,[0,4,0,4,2,2,0,0,2,2,0,0,0,0,0]],[17,[1,3,4,3,1,1,1,1,1,1,2,2,2,0,2]],[16,[0,2,3,2,0,0,0,0,0,0,0,4,4,4,0]],[15,[2,1,2,1,3,3,2,2,1,1,0,4,4,3,0]],[14,[2,0,1,0,2,2,4,4,0,0,2,2,2,2,2]],[13,[0,2,0,2,1,1,0,0,3,3,2,2,2,1,2]],[12,[0,1,2,1,0,0,2,2,2,2,4,0,0,0,4]],[11,[3,0,1,0,3,3,3,3,1,1,3,3,3,1,3]],[10,[0,4,0,4,2,2,0,0,0,0,2,2,2,0,2]],[9,[1,3,4,3,1,1,1,1,4,4,3,3,3,0,3]],[8,[3,2,3,2,0,0,3,3,3,3,0,0,0,4,0]],[7,[4,1,2,1,4,4,4,4,2,2,1,1,1,3,1]],[6,[1,0,1,0,3,3,1,1,3,3,0,0,0,2,0]],[5,[2,3,0,3,2,2,2,2,2,2,2,2,2,1,2]],[4,[3,2,3,2,1,1,3,3,1,1,3,3,3,0,3]],[3,[4,1,2,1,0,0,4,4,0,0,4,4,4,4,4]],[2,[3,0,1,0,3,3,3,3,3,3,3,3,3,3,3]],[1,[2,3,0,3,2,2,2,2,2,2,2,2,2,2,2]]],
             seven: [[21,[1,2,3,2,1,1,1,1,3,3,1,0,1,1,1]],[20,[2,1,2,1,0,0,2,2,2,2,0,3,2,2,2]],[19,[4,0,1,0,3,3,4,4,3,3,2,1,2,3,3]],[18,[3,4,0,4,2,2,2,2,2,2,3,1,3,3,3]],[17,[2,3,4,3,1,1,2,2,1,1,2,3,2,1,2]],[16,[3,2,3,2,0,0,0,0,0,0,0,4,4,4,0]],[15,[0,1,2,1,3,3,0,0,1,1,0,3,4,4,0]],[14,[1,0,1,0,2,2,4,4,0,0,2,2,2,2,2]],[13,[0,2,0,2,1,1,0,0,3,3,2,3,2,2,2]],[12,[4,1,2,1,0,0,4,4,4,4,4,4,4,0,4]],[11,[3,0,1,0,3,3,3,3,3,3,3,3,3,1,3]],[10,[2,4,0,4,2,2,2,2,2,2,2,2,2,2,2]],[9,[3,3,4,3,1,1,1,1,1,1,3,1,1,3,3]],[8,[0,2,3,2,0,0,0,0,0,0,0,0,0,0,0]],[7,[0,1,2,1,4,4,4,4,1,1,1,1,1,1,1]],[6,[0,0,1,0,3,3,1,1,3,3,0,0,0,0,0]],[5,[2,3,0,3,2,2,2,2,2,2,2,0,2,2,2]],[4,[3,2,3,2,1,1,3,3,1,1,3,3,3,3,3]],[3,[0,1,2,1,0,0,0,0,0,0,0,2,0,0,0]],[2,[1,0,1,0,3,3,3,3,3,3,3,2,3,3,3]],[1,[0,3,0,3,2,2,0,0,2,2,2,1,2,2,2]]],
-            reg: [[21,[1,0,0,0,1,1,2,2,4,4,0,2,0,2,2]],[20,[1,3,3,3,0,1,1,1,3,3,1,1,0,0,0]],[19,[1,2,2,2,2,2,3,3,2,2,3,3,3,3,3]],[18,[4,1,1,1,1,4,4,4,4,4,4,2,4,0,2]],[17,[3,0,0,0,3,3,3,3,4,4,3,1,3,0,1]],[16,[2,1,1,1,2,2,2,2,3,3,2,0,2,0,0]],[15,[1,0,0,0,1,1,1,1,2,2,1,1,1,1,1]],[14,[0,4,4,4,4,0,0,0,1,1,0,0,0,0,0]],[13,[3,3,3,3,3,3,4,4,0,0,4,4,4,3,4]],[12,[3,2,2,2,3,2,4,4,1,1,3,3,3,3,3]],[11,[1,1,1,1,1,4,2,2,0,0,2,2,2,2,2]],[10,[1,0,0,0,1,0,2,2,2,2,1,1,1,0,1]],[9,[1,2,2,2,1,0,0,0,1,1,0,0,0,1,0]],[8,[0,1,1,1,1,4,0,0,0,0,0,0,0,0,0]],[7,[0,0,0,0,1,2,1,1,4,4,1,1,1,3,1]],[6,[0,1,1,1,2,1,1,1,3,3,2,2,2,2,2]],[5,[1,0,0,0,0,1,0,0,2,2,1,1,1,1,1]],[4,[0,4,4,4,4,0,0,0,1,1,0,0,0,0,0]],[3,[3,3,3,3,3,4,3,3,0,0,3,4,3,4,4]],[2,[3,2,2,2,3,2,4,4,1,1,3,3,3,4,3]],[1,[1,1,1,1,1,1,1,1,0,0,1,3,1,2,3]]]
+            reg: [[21,[1,0,0,0,1,1,2,2,4,4,null,null,null,null,null]],[20,[1,3,3,3,0,1,1,1,3,3,null,null,null,null,null]],[19,[1,2,2,2,2,2,3,3,2,2,null,null,null,null,null]],[18,[4,1,1,1,1,4,4,4,4,4,null,null,null,null,null]],[17,[3,0,0,0,3,3,3,3,4,4,null,null,null,null,null]],[16,[2,1,1,1,2,2,2,2,3,3,null,null,null,null,null]],[15,[1,0,0,0,1,1,1,1,2,2,null,null,null,null,null]],[14,[0,4,4,4,4,0,0,0,1,1,null,null,null,null,null]],[13,[3,3,3,3,3,3,4,4,0,0,null,null,null,null,null]],[12,[3,2,2,2,3,2,4,4,1,1,null,null,null,null,null]],[11,[1,1,1,1,1,4,2,2,0,0,null,null,null,null,null]],[10,[1,0,0,0,1,0,2,2,2,2,null,null,null,null,null]],[9,[1,2,2,2,1,0,0,0,1,1,null,null,null,null,null]],[8,[0,1,1,1,1,4,0,0,0,0,null,null,null,null,null]],[7,[0,0,0,0,1,2,1,1,4,4,null,null,null,null,null]],[6,[0,1,1,1,2,1,1,1,3,3,null,null,null,null,null]],[5,[1,0,0,0,0,1,0,0,2,2,null,null,null,null,null]],[4,[0,4,4,4,4,0,0,0,1,1,null,null,null,null,null]],[3,[3,3,3,3,3,4,3,3,0,0,null,null,null,null,null]],[2,[3,2,2,2,3,2,4,4,1,1,null,null,null,null,null]],[1,[1,1,1,1,1,1,1,1,0,0,null,null,null,null,null]]]
         }
     };
 
+    // ▼ 左リール表示構築
+    function buildL() {
+        const target = document.getElementById('stripL');
+        target.innerHTML = '';
+        const imgNum = currentReel === 'left' ? 1 : currentReel === 'middle' ? 2 : 3;
+        
+        // リール画像は3周分生成してループさせる
+        for(let s=0; s<3; s++) {
+            reelArray.forEach(num => {
+                const d = document.createElement('div');
+                d.className = 'symbol';
+                d.style.backgroundImage = `url('reel${imgNum}.png')`;
+                // 21番が一番上(0%)、1番が一番下
+                d.style.backgroundPosition = `0 ${(21-num)*5}%`;
+                target.appendChild(d);
+            });
+        }
+    }
+
+    // ▼ 右側（結果表示用）リール描画
+    function drawR(midNum) {
+        const stripR = document.getElementById('stripR');
+        stripR.innerHTML = '';
+        const imgNum = currentReel === 'left' ? 1 : currentReel === 'middle' ? 2 : 3;
+        
+        // 停止位置を中心に上下2コマ（計5コマ）を描画
+        // midNum: 停止したリール番号（例：21）
+        [2, 1, 0, -1, -2].forEach(offset => {
+            let num = midNum + offset;
+            // 21を超えたら1へ、1未満なら21へ（ループ処理）
+            while(num > 21) num -= 21;
+            while(num < 1) num += 21;
+            
+            const d = document.createElement('div');
+            d.className = 'symbol';
+            d.style.backgroundImage = `url('reel${imgNum}.png')`;
+            d.style.backgroundPosition = `0 ${(21-num)*5}%`;
+            stripR.appendChild(d);
+        });
+    }
+
+    // ▼ スクロールイベント（中段のリール番号を取得）
     const winL = document.getElementById('winL');
     winL.onscroll = () => {
-        const p = winL.scrollTop + 150;
-        const currentIdx = reelArray[Math.floor(p / 60) % 21];
-        selectedIdx = currentIdx;
-        reelPositions[currentReel] = currentIdx;
+        // スクロール位置から「中段にきているリール配列のインデックス」を計算
+        // 1周の高さ = 21コマ * 60px = 1260px
+        const centerPos = winL.scrollTop + (sH * 2.5); // 補正値
+        const rawIdx = Math.floor(centerPos / sH) % 21;
+        
+        // ここが重要：配列のインデックスから「リール番号」を直接取得
+        // reelArray[0] = 21, reelArray[1] = 20 ...
+        selectedIdx = reelArray[rawIdx];
+        
+        // 無限ループ処理
+        if(winL.scrollTop < sH * 5) winL.scrollTop += sH * 21;
+        if(winL.scrollTop > sH * 37) winL.scrollTop -= sH * 21;
+
         document.getElementById('val-mid').innerText = selectedIdx;
-        if(winL.scrollTop < 300) winL.scrollTop += 1260;
-        if(winL.scrollTop > 2000) winL.scrollTop -= 1260;
     };
 
-    function buildL() {
-        const target = document.getElementById('stripL'); target.innerHTML = '';
-        const img = currentReel === 'left' ? 1 : currentReel === 'middle' ? 2 : 3;
-        for(let i=0; i<3; i++) reelArray.forEach(n => {
-            const d = document.createElement('div'); d.className = 'symbol';
-            d.style.backgroundImage = `url('reel${img}.png')`;
-            d.style.backgroundPosition = `0 ${(21-n)*5}%`;
-            target.appendChild(d);
-        });
+    // ▼ 解析実行（ここを単純化）
+    function executeControl() {
+        const reelRows = GOD_DATA[currentReel][currentState];
+        if (!reelRows) return;
+
+        // 1. 押した位置（selectedIdx）に対応する行を探す
+        //    データ構造が [リール番号, [スベリ...]] なので、
+        //    row[0] が selectedIdx と一致する行を探すだけでOK
+        const targetRow = reelRows.find(row => row[0] === selectedIdx);
+
+        if (!targetRow) {
+            console.error("定義データが見つかりません: " + selectedIdx);
+            return;
+        }
+
+        // 2. 選択されたフラグ（selectedFlagIdx）のスベリコマ数を取得
+        const slips = targetRow[1];
+        const slip = slips[selectedFlagIdx];
+        
+        // null または undefined なら滑り0とする
+        const slipVal = (slip === null || typeof slip === 'undefined') ? 0 : slip;
+
+        // 3. 最終停止位置を計算（単純な足し算＋ループ処理）
+        let stopMid = selectedIdx + slipVal;
+        if (stopMid > 21) stopMid -= 21; // 21を超えたら1に戻る
+        
+        // 4. 結果表示
+        document.getElementById('val-slip').innerText = (slip === null ? "--" : slip);
+        document.getElementById('val-res').innerText = stopMid;
+        
+        drawR(stopMid);
     }
 
-    function drawR(n) {
-        const target = document.getElementById('stripR'); target.innerHTML = '';
-        const img = currentReel === 'left' ? 1 : currentReel === 'middle' ? 2 : 3;
-        [2, 1, 0, -1, -2].forEach(o => {
-            let num = n + o; while(num > 21) num -= 21; while(num < 1) num += 21;
-            const d = document.createElement('div'); d.className = 'symbol';
-            d.style.backgroundImage = `url('reel${img}.png')`;
-            d.style.backgroundPosition = `0 ${(21-num)*5}%`;
-            target.appendChild(d);
-        });
-    }
-
-    function changeReel(id) {
-        if(isExecuting) return;
+    // ▼ リール変更時の処理
+    function setReel(id) {
         document.querySelectorAll('.group:first-child .btn').forEach(b => b.classList.remove('active'));
         document.getElementById('rb-' + id).classList.add('active');
         currentReel = id;
-        selectedIdx = reelPositions[id];
+        
         buildL();
-        winL.scrollTop = sH * (21 + (21 - selectedIdx + 21) - 2);
-        drawR(selectedIdx);
+
+        // 初期位置の設定（左:8番, 中:15番, 右:3番）
+        const initialMap = { left: 8, middle: 15, right: 3 };
+        const initNum = initialMap[id];
+        
+        // 初期位置までスクロールさせる
+        // リール番号からスクロール位置を逆算（単純化）
+        // (21 - initNum) が「配列の何番目か」に相当
+        const targetScroll = sH * (21 + (21 - initNum) - 2); 
+        winL.scrollTo({ top: targetScroll, behavior: 'auto' });
+
+        drawR(initNum);
+        document.getElementById('val-mid').innerText = initNum;
+        document.getElementById('val-slip').innerText = '--';
+        document.getElementById('val-res').innerText = '--';
     }
 
-    function executeControl() {
-        if(isExecuting) return;
-        isExecuting = true;
-        const reelRows = GOD_DATA[currentReel][currentState];
-        if (!reelRows) { isExecuting = false; return; }
-        const targetRow = reelRows.find(r => r[0] === selectedIdx);
-        if (!targetRow) { isExecuting = false; return; }
-        const slip = targetRow[1][selectedFlagIdx];
-        const slipVal = (slip === null || typeof slip === 'undefined') ? 0 : slip;
-        let res = selectedIdx + slipVal; while(res > 21) res -= 21;
-        document.getElementById('val-slip').innerText = slipVal;
-        document.getElementById('val-res').innerText = res;
-        drawR(res);
-        setTimeout(() => { isExecuting = false; }, 80);
-    }
-
+    // ▼ 状態変更（ボーナス成立など）
     function setState(id) {
-        if(isExecuting) return;
         document.querySelectorAll('.group:last-child .btn').forEach(b => b.classList.remove('active'));
         document.getElementById('st-' + id).classList.add('active');
         currentState = id;
-        document.querySelectorAll('.is-tok').forEach(b => {
-            if(id === 'hazure') b.classList.add('disabled');
-            else b.classList.remove('disabled');
-        });
-        if(id === 'hazure' && selectedFlagIdx >= 10) setFlag(0, document.querySelector('.f-btn'));
+        
+        const tokBtns = document.querySelectorAll('.is-tok');
+        if (id === 'hazure') {
+            tokBtns.forEach(b => b.classList.add('disabled'));
+            // ハズレ状態で特殊役が選ばれていたら強制的に「ハズレ」に戻す
+            if (selectedFlagIdx >= 10) setFlag(0, document.getElementById('flg-0'));
+        } else {
+            tokBtns.forEach(b => b.classList.remove('disabled'));
+        }
     }
 
-    function setFlag(i, b) {
-        if(isExecuting) return;
-        document.querySelectorAll('.f-btn').forEach(x => x.classList.remove('active'));
-        b.classList.add('active'); selectedFlagIdx = i;
+    // ▼ フラグ設定（リプレイ、ベルなど）
+    function setFlag(idx, btn) {
+        document.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedFlagIdx = idx;
     }
 
-    window.onload = () => { changeReel('left'); setState('hazure'); };
+    // ▼ 初期化実行
+    window.onload = () => {
+        setReel('left');
+        setState('hazure');
+    };
 </script>
 </body>
 </html>
