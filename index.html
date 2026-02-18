@@ -165,20 +165,37 @@
         document.getElementById('val-mid').innerText = selectedIdx;
     };
 
+    /**
+     * 【監査済】解析実行メインロジック
+     * 1. ユーザーが見ている中段番号 (selectedIdx) を取得
+     * 2. 定義表 (targetIdx = selectedIdx - 1) から滑り数を取得
+     * 3. 中段番号 + 滑り数 = 停止中段番号 (21超なら-21)
+     */
     function executeControl() {
-        // 【統合ロジック】中段番号をそのままインデックス(0-20)に変換
+        // 中段番号(1-21)を配列インデックス(0-20)に変換
         const targetIdx = selectedIdx - 1;
         
-        // 定義表から滑りコマ数を取得
-        const reelData = GOD_DATA[currentReel][currentState];
-        const slip = (reelData && reelData[targetIdx]) ? reelData[targetIdx][selectedFlagIdx] : 0;
+        // 指定リール、指定ステートの定義データ行を取得
+        const reelRows = GOD_DATA[currentReel][currentState];
+        if (!reelRows || !reelRows[targetIdx]) {
+            console.error("Definition not found for index:", targetIdx);
+            return;
+        }
+
+        // 定義表から滑りコマ数を取得 (nullや未定義は 0 として扱う)
+        const slip = reelRows[targetIdx][selectedFlagIdx] ?? 0;
         
-        // 【核心】中段番号 + 滑りコマ数。21を超えたら-21
-        let stopMid = selectedIdx + (slip || 0);
+        // 指示通りの計算式：中段 + 滑り
+        let stopMid = selectedIdx + slip;
+        
+        // 21を超えたらマイナス21
         if (stopMid > 21) stopMid -= 21;
         
-        document.getElementById('val-slip').innerText = (slip === null ? "--" : slip);
+        // UI更新
+        document.getElementById('val-slip').innerText = slip;
         document.getElementById('val-res').innerText = stopMid;
+        
+        // 右側の停止リール表示を更新
         drawR(stopMid);
     }
 
